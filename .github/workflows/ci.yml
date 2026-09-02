@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [integration, main]
+  push:
+    branches: [integration, main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (fails on any TS error)
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Lint (includes no-explicit-any rule, fails on warnings too)
+        run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0
+
+      - name: Format check (does not auto-fix, only verifies)
+        run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+
+      - name: Run unit + e2e tests
+        run: npm run test -- --ci --coverage
+
+      - name: Build (catches build-time issues before Render does)
+        run: npm run build
